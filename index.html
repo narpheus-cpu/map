@@ -116,7 +116,18 @@
     </div>
 
     <script>
-        var chart = echarts.init(document.getElementById('map-container'));
+        var mapContainerEl = document.getElementById('map-container');
+        var chart = echarts.init(mapContainerEl);
+        
+        // [추가] 줌 속도를 1/2로 낮추기 위한 휠 이벤트 제어기 (절반의 줌 이벤트만 통과시킴)
+        var wheelSkip = false;
+        mapContainerEl.addEventListener('wheel', function(e) {
+            wheelSkip = !wheelSkip;
+            if (wheelSkip) {
+                e.stopPropagation();
+                e.preventDefault();
+            }
+        }, { capture: true, passive: false });
         
         var regionConfigs = {
             'east_asia': { name: '동아시아', map: 'world', center: [115, 35], zoom: 4 },
@@ -213,7 +224,8 @@
                     type: 'map',
                     mapType: config.map,
                     roam: true,
-                    scaleLimit: { min: 1, max: 100 }, 
+                    // [변경] 최대 확대 배율을 100에서 30으로 조정
+                    scaleLimit: { min: 1, max: 30 }, 
                     nameMap: globalNameMap,
                     center: config.center || null,
                     zoom: config.zoom || 1,
