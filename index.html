@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>세계 행정구역 학습</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/js/china.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.9.0/map/js/world.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body, html { 
+            margin: 0; padding: 0; 
+            width: 100%; height: 100%;
+            background-color: #f4f4f9; 
+            display: flex; flex-direction: column; 
+            font-family: sans-serif; overflow: hidden; 
+        }
+        #tab-container {
+            display: flex;
+            overflow-x: auto;
+            background: #fff;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            align-items: center;
+            height: 60px;
+            flex-shrink: 0;
+            -webkit-overflow-scrolling: touch;
+            z-index: 20;
+        }
+        #tab-container::-webkit-scrollbar { display: none; }
+        
+        .tab-btn {
+            display: inline-block;
+            padding: 8px 16px; margin-right: 8px;
+            background: #e0e0e0; border-radius: 20px;
+            font-size: 14px; cursor: pointer; user-select: none;
+            color: #333;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .tab-btn.active {
+            background: #1976d2; color: #fff; font-weight: bold;
+        }
+        #header { 
+            padding: 16px; text-align: center; 
+            font-size: 22px; /* 글자 크기를 더 크게 조정 */
+            font-weight: bold; 
+            background: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            z-index: 10; color: #1976d2; 
+            flex-shrink: 0;
+            min-height: 64px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #map-container { 
+            flex: 1; width: 100%; min-height: 0; 
+        }
+    </style>
+</head>
+<body>
+    <div id="tab-container"></div>
+    <div id="header">학습할 지역을 터치하세요</div>
+    <div id="map-container"></div>
+
+    <script>
+        var chart = echarts.init(document.getElementById('map-container'));
+        
+        var regionConfigs = {
+            'east_asia': { name: '동아시아', map: 'world', center: [115, 35], zoom: 4 },
+            'west_asia': { name: '서아시아', map: 'world', center: [45, 25], zoom: 4.5 },
+            'europe': { name: '유럽', map: 'world', center: [15, 48], zoom: 4 },
+            'africa': { name: '아프리카', map: 'world', center: [20, 0], zoom: 2.2 },
+            'americas': { name: '아메리카', map: 'world', center: [-80, 10], zoom: 1.5 },
+            'usa': { name: '미국', map: 'usa', zoom: 1.2 },
+            'china': { name: '중국', map: 'china', zoom: 1.2 }
+        };
+
+        var globalNameMap = {
+            '北京': '베이징(북경)', '天津': '톈진(천진)', '河北': '허베이(하북)', '山西': '산시(산서)', '内蒙古': '네이멍구(내몽고)', '辽宁': '랴오닝(요녕)', '吉林': '지린(길림)', '黑龙江': '헤이룽장(흑룡강)', '上海': '상하이(상해)', '江苏': '장쑤(강소)', '浙江': '저장(절강)', '安徽': '안후이(안휘)', '福建': '푸젠(복건)', '江西': '장시(강서)', '山东': '산둥(산동)', '河南': '허난(하남)', '湖北': '후베이(호북)', '湖南': '후난(호남)', '广东': '광둥(광동)', '广西': '광시(광서)', '海南': '하이난(해남)', '重庆': '충칭(중경)', '四川': '쓰촨(사천)', '贵州': '구이저우(귀주)', '云南': '윈난(운남)', '西藏': '시짱(서장)', '陕西': '산시(섬서)', '甘肃': '간쑤(감숙)', '青海': '칭하이(청해)', '宁夏': '닝샤(영하)', '新疆': '신장(신강)', '台湾': '타이완(대만)', '香港': '홍콩(향항)', '澳门': '마카오(오문)', '南海诸岛': '남해제도',
+            'Alabama': '앨라배마', 'Alaska': '알래스카', 'Arizona': '애리조나', 'Arkansas': '아칸소', 'California': '캘리포니아', 'Colorado': '콜로라도', 'Connecticut': '코네티컷', 'Delaware': '델라웨어', 'Florida': '플로리다', 'Georgia': '조지아', 'Hawaii': '하와이', 'Idaho': '아이다호', 'Illinois': '일리노이', 'Indiana': '인디애나', 'Iowa': '아이오와', 'Kansas': '캔자스', 'Kentucky': '켄터키', 'Louisiana': '루이지애나', 'Maine': '메인', 'Maryland': '메릴랜드', 'Massachusetts': '매사추세츠', 'Michigan': '미시간', 'Minnesota': '미네소타', 'Mississippi': '미시시피', 'Missouri': '미주리', 'Montana': '몬태나', 'Nebraska': '네브래스카', 'Nevada': '네바다', 'New Hampshire': '뉴햄프셔', 'New Jersey': '뉴저지', 'New Mexico': '뉴멕시코', 'New York': '뉴욕', 'North Carolina': '노스캐롤라이나', 'North Dakota': '노스다코타', 'Ohio': '오하이오', 'Oklahoma': '오클라호마', 'Oregon': '오리건', 'Pennsylvania': '펜실베이니아', 'Rhode Island': '로드아일랜드', 'South Carolina': '사우스캐롤라이나', 'South Dakota': '사우스다코타', 'Tennessee': '테네시', 'Texas': '텍사스', 'Utah': '유타', 'Vermont': '버몬트', 'Virginia': '버지니아', 'Washington': '워싱턴', 'West Virginia': '웨스트버지니아', 'Wisconsin': '위스콘신', 'Wyoming': '와이오밍', 'Puerto Rico': '푸에르토리코',
+            'Mexico': '멕시코', 'Guatemala': '과테말라', 'Belize': '벨리즈', 'Honduras': '온두라스', 'El Salvador': '엘살바도르', 'Nicaragua': '니카라과', 'Costa Rica': '코스타리카', 'Panama': '파나마', 'Colombia': '콜롬비아', 'Venezuela': '베네수엘라', 'Ecuador': '에콰도르', 'Peru': '페루', 'Bolivia': '볼리비아', 'Brazil': '브라질', 'Chile': '칠레', 'Argentina': '아르헨티나', 'Paraguay': '파라과이', 'Uruguay': '우루과이', 'Cuba': '쿠바', 'Haiti': '아이티', 'Dominican Rep.': '도미니카공화국', 'Jamaica': '자메이카', 'Bahamas': '바하마', 'Guyana': '가이아나', 'Suriname': '수리남', 'Fr. Guiana': '프랑스령 기아나', 'Falkland Is.': '포클랜드 제도',
+            'Germany': '독일', 'Poland': '폴란드', 'Czech Rep.': '체코', 'Slovakia': '슬로바키아', 'Hungary': '헝가리', 'Austria': '오스트리아', 'Switzerland': '스위스', 'Russia': '러시아', 'Ukraine': '우크라이나', 'Belarus': '벨라루스', 'Moldova': '몰도바', 'Romania': '루마니아', 'Bulgaria': '불가리아', 'Spain': '스페인', 'Portugal': '포르투갈', 'Italy': '이탈리아', 'Greece': '그리스', 'Albania': '알바니아', 'Macedonia': '북마케도니아', 'Serbia': '세르비아', 'Bosnia and Herz.': '보스니아 헤르체고비나', 'Croatia': '크로아티아', 'Slovenia': '슬로베니아', 'Montenegro': '몬테네그로', 'France': '프랑스', 'United Kingdom': '영국', 'Ireland': '아일랜드', 'Belgium': '벨기에', 'Netherlands': '네덜란드', 'Sweden': '스웨덴', 'Norway': '노르웨이', 'Finland': '핀란드', 'Denmark': '덴마크', 'Iceland': '아이슬란드', 'Estonia': '에스토니아', 'Latvia': '라트비아', 'Lithuania': '리투아니아', 'Luxembourg': '룩셈부르크', 'Kosovo': '코소보',
+            'Egypt': '이집트', 'Libya': '리비아', 'Algeria': '알제리', 'Tunisia': '튀니지', 'Morocco': '모로코', 'Sudan': '수단', 'S. Sudan': '남수단', 'Ethiopia': '에티오피아', 'Somalia': '소말리아', 'Kenya': '케냐', 'Tanzania': '탄자니아', 'Uganda': '우간다', 'Rwanda': '르완다', 'Burundi': '부룬디', 'Dem. Rep. Congo': '민주콩고', 'Congo': '콩고', 'Angola': '앙골라', 'Zambia': '잠비아', 'Zimbabwe': '짐바브웨', 'Mozambique': '모잠비크', 'Madagascar': '마다가스카르', 'South Africa': '남아프리카공화국', 'Namibia': '나미비아', 'Botswana': '보츠와나', 'Nigeria': '나이지리아', 'Ghana': '가나', 'Ivory Coast': '코트디부아르', 'Senegal': '세네갈', 'Mali': '말리', 'Niger': '니제르', 'Chad': '차드', 'Cameroon': '카메룬', 'Gambia': '감비아', 'Togo': '토고', 'Liberia': '라이베리아', 'Burkina Faso': '부르키나파소', 'Guinea': '기니', 'Guinea-Bissau': '기니비사우', 'Sierra Leone': '시에라리온', 'Benin': '베냉', 'Eq. Guinea': '적도 기니', 'Gabon': '가봉', 'Central African Rep.': '중앙아프리카공화국', 'Mauritania': '모리타니', 'W. Sahara': '서사하라', 'Lesotho': '레소토', 'Swaziland': '에스와티니', 'Malawi': '말라위', 'Djibouti': '지부티', 'Eritrea': '에리트레아', 'Somaliland': '소말릴란드',
+            'Kazakhstan': '카자흐스탄', 'Uzbekistan': '우즈베키스탄', 'Turkmenistan': '투르크메니스탄', 'Kyrgyzstan': '키르기스스탄', 'Tajikistan': '타지키스탄', 'Saudi Arabia': '사우디아라비아', 'Yemen': '예멘', 'Oman': '오만', 'United Arab Emirates': '아랍에미리트', 'Qatar': '카타르', 'Kuwait': '쿠웨이트', 'Iraq': '이라크', 'Iran': '이란', 'Syria': '시리아', 'Jordan': '요르단', 'Lebanon': '레바논', 'Israel': '이스라엘', 'Turkey': '튀르키예', 'Afghanistan': '아프가니스탄', 'Pakistan': '파키스탄', 'Myanmar': '미얀마', 'Thailand': '태국', 'Laos': '라오스', 'Cambodia': '캄보디아', 'Vietnam': '베트남', 'Malaysia': '말레이시아', 'Indonesia': '인도네시아', 'Philippines': '필리핀', 'Singapore': '싱가포르', 'Brunei': '브루나이', 'Timor-Leste': '동티모르', 'India': '인도', 'Bangladesh': '방글라데시', 'Sri Lanka': '스리랑카', 'Nepal': '네팔', 'Bhutan': '부탄', 'Mongolia': '몽골', 'Japan': '일본', 'Korea': '대한민국', 'Dem. Rep. Korea': '북한', 'Armenia': '아르메니아', 'Azerbaijan': '아제르바이잔', 'Cyprus': '키프로스', 'N. Cyprus': '북키프로스', 'Palestine': '팔레스타인',
+            'Australia': '호주', 'New Zealand': '뉴질랜드', 'Canada': '캐나다', 'Greenland': '그린란드', 'United States': '미국', 'Papua New Guinea': '파푸아뉴기니', 'Solomon Is.': '솔로몬 제도', 'Vanuatu': '바누아투', 'Fiji': '피지', 'New Caledonia': '누벨칼레도니', 'Fr. Polynesia': '프랑스령 폴리네시아'
+        };
+
+        // 전 세계 수도, 미국 주도, 중국 성도 매핑 데이터
+        var capitalMap = {
+            // 중국 성도
+            '베이징(북경)': '베이징', '톈진(천진)': '톈진', '허베이(하북)': '스자좡', '산시(산서)': '타이위안', '네이멍구(내몽고)': '후허하오터', '랴오닝(요녕)': '선양', '지린(길림)': '창춘', '헤이룽장(흑룡강)': '하얼빈', '상하이(상해)': '상하이', '장쑤(강소)': '난징', '저장(절강)': '항저우', '안후이(안휘)': '허페이', '푸젠(복건)': '푸저우', '장시(강서)': '난창', '산둥(산동)': '지난', '허난(하남)': '정저우', '후베이(호북)': '우한', '후난(호남)': '창사', '광둥(광동)': '광저우', '광시(광서)': '난닝', '하이난(해남)': '하이커우', '충칭(중경)': '충칭', '쓰촨(사천)': '청두', '구이저우(귀주)': '구이양', '윈난(운남)': '쿤밍', '시짱(서장)': '라사', '산시(섬서)': '시안', '간쑤(감숙)': '란저우', '칭하이(청해)': '시닝', '닝샤(영하)': '인촨', '신장(신강)': '우루무치', '타이완(대만)': '타이베이', '홍콩(향항)': '홍콩', '마카오(오문)': '마카오',
+            // 미국 주도
+            '앨라배마':'몽고메리','알래스카':'주노','애리조나':'피닉스','아칸소':'리틀록','캘리포니아':'새크라멘토','콜로라도':'덴버','코네티컷':'하트퍼드','델라웨어':'도버','플로리다':'탤러해시','조지아':'애틀랜타','하와이':'호놀룰루','아이다호':'보이시','일리노이':'스프링필드','인디애나':'인디애나폴리스','아이오와':'디모인','캔자스':'토피카','켄터키':'프랭크퍼트','루이지애나':'배턴루지','메인':'오거스타','메릴랜드':'애나폴리스','매사추세츠':'보스턴','미시간':'랜싱','미네소타':'세인트폴','미시시피':'잭슨','미주리':'제퍼슨시티','몬태나':'헬레나','네브래스카':'링컨','네바다':'카슨시티','뉴햄프셔':'콩코드','뉴저지':'트렌턴','뉴멕시코':'산타페','뉴욕':'올버니','노스캐롤라이나':'롤리','노스다코타':'비즈마크','오하이오':'콜럼버스','오클라호마':'오클라호마시티','오리건':'세일럼','펜실베이니아':'해리스버그','로드아일랜드':'프로비던스','사우스캐롤라이나':'컬럼비아','사우스다코타':'피어','테네시':'내슈빌','텍사스':'오스틴','유타':'솔트레이크시티','버몬트':'몬트필리어','버지니아':'리치먼드','워싱턴':'올림피아','웨스트버지니아':'찰스턴','위스콘신':'매디슨','와이오밍':'샤이엔','푸에르토리코':'산후안',
+            // 아메리카 수도
+            '멕시코':'멕시코시티','과테말라':'과테말라시티','벨리즈':'벨모판','온두라스':'테구시갈파','엘살바도르':'산살바도르','니카라과':'마나과','코스타리카':'산호세','파나마':'파나마시티','콜롬비아':'보고타','베네수엘라':'카라카스','에콰도르':'키토','페루':'리마','볼리비아':'수크레','브라질':'브라질리아','칠레':'산티아고','아르헨티나':'부에노스아이레스','파라과이':'아순시온','우루과이':'몬테비데오','쿠바':'아바나','아이티':'포르토프랭스','도미니카공화국':'산토도밍고','자메이카':'킹스턴','바하마':'나소','가이아나':'조지타운','수리남':'파라마리보','프랑스령 기아나':'카옌','포클랜드 제도':'스탠리',
+            // 유럽 수도
+            '독일':'베를린','폴란드':'바르샤바','체코':'프라하','슬로바키아':'브라티슬라바','헝가리':'부다페스트','오스트리아':'빈','스위스':'베른','러시아':'모스크바','우크라이나':'키이우','벨라루스':'민스크','몰도바':'키시너우','루마니아':'부쿠레슈티','불가리아':'소피아','스페인':'마드리드','포르투갈':'리스본','이탈리아':'로마','그리스':'아테네','알바니아':'티라나','북마케도니아':'스코페','세르비아':'베오그라드','보스니아 헤르체고비나':'사라예보','크로아티아':'자그레브','슬로베니아':'류블랴나','몬테네그로':'포드고리카','프랑스':'파리','영국':'런던','아일랜드':'더블린','벨기에':'브뤼셀','네덜란드':'암스테르담','스웨덴':'스톡홀름','노르웨이':'오슬로','핀란드':'헬싱키','덴마크':'코펜하겐','아이슬란드':'레이캬비크','에스토니아':'탈린','라트비아':'리가','리투아니아':'빌뉴스','룩셈부르크':'룩셈부르크','코소보':'프리슈티나',
+            // 아프리카 수도
+            '이집트':'카이로','리비아':'트리폴리','알제리':'알제','튀니지':'튀니스','모로코':'라바트','수단':'카르툼','남수단':'주바','에티오피아':'아디스아바바','소말리아':'모가디슈','케냐':'나이로비','탄자니아':'도도마','우간다':'캄팔라','르완다':'키갈리','부룬디':'기테가','민주콩고':'킨샤사','콩고':'브라자빌','앙골라':'루안다','잠비아':'루사카','짐바브웨':'하라레','모잠비크':'마푸투','마다가스카르':'안타나나리보','남아프리카공화국':'프리토리아','나미비아':'빈트후크','보츠와나':'가보로네','나이지리아':'아부자','가나':'아크라','코트디부아르':'야무수크로','세네갈':'다카르','말리':'바마코','니제르':'니아메','차드':'은자메나','카메룬':'야운데','감비아':'반줄','토고':'로메','라이베리아':'몬로비아','부르키나파소':'와가두구','기니':'코나크리','기니비사우':'비사우','시에라리온':'프리타운','베냉':'포르토노보','적도 기니':'말라보','가봉':'리브르빌','중앙아프리카공화국':'방기','모리타니':'누악쇼트','서사하라':'엘아이운','레소토':'마세루','에스와티니':'음바바네','말라위':'릴롱궤','지부티':'지부티','에리트레아':'아스마라','소말릴란드':'하르게이사',
+            // 아시아 및 오세아니아 수도
+            '카자흐스탄':'아스타나','우즈베키스탄':'타슈켄트','투르크메니스탄':'아시가바트','키르기스스탄':'비슈케크','타지키스탄':'두샨베','사우디아라비아':'리야드','예멘':'사나','오만':'무스카트','아랍에미리트':'아부다비','카타르':'도하','쿠웨이트':'쿠웨이트시티','이라크':'바그다드','이란':'테헤란','시리아':'다마스쿠스','요르단':'암만','레바논':'베이루트','이스라엘':'예루살렘','튀르키예':'앙카라','아프가니스탄':'카불','파키스탄':'이슬라마바드','미얀마':'네피도','태국':'방콕','라오스':'비엔티안','캄보디아':'프놈펜','베트남':'하노이','말레이시아':'쿠알라룸푸르','인도네시아':'자카르타','필리핀':'마닐라','싱가포르':'싱가포르','브루나이':'반다르스리브가완','동티모르':'딜리','인도':'뉴델리','방글라데시':'다카','스리랑카':'스리자야와르데네푸라코테','네팔':'카트만두','부탄':'팀푸','몽골':'울란바토르','일본':'도쿄','대한민국':'서울','북한':'평양','아르메니아':'예레반','아제르바이잔':'바쿠','키프로스':'니코시아','북키프로스':'북니코시아','팔레스타인':'예루살렘(라말라)','호주':'캔버라','뉴질랜드':'웰링턴','캐나다':'오타와','그린란드':'누크','미국':'워싱턴 D.C.','파푸아뉴기니':'포트모르즈비','솔로몬 제도':'호니아라','바누아투':'포트빌라','피지':'수바','누벨칼레도니':'누메아','프랑스령 폴리네시아':'파페에테'
+        };
+
+        var currentRegion = 'east_asia';
+        var revealedState = {};
+        var isUsaLoaded = false;
+
+        var tabContainer = document.getElementById('tab-container');
+        Object.keys(regionConfigs).forEach(function(key) {
+            var btn = document.createElement('div');
+            btn.className = 'tab-btn' + (key === currentRegion ? ' active' : '');
+            btn.innerText = regionConfigs[key].name;
+            btn.onclick = function() {
+                document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+                btn.classList.add('active');
+                currentRegion = key;
+                revealedState = {}; 
+                document.getElementById('header').innerText = '학습할 지역을 터치하세요';
+                document.getElementById('header').style.color = '#333';
+                renderMapManager();
+            };
+            tabContainer.appendChild(btn);
+        });
+
+        function renderMapManager() {
+            var config = regionConfigs[currentRegion];
+            
+            if (config.map === 'usa' && !isUsaLoaded) {
+                document.getElementById('header').innerText = '미국 지도 데이터 불러오는 중...';
+                fetch('https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json')
+                    .then(res => res.json())
+                    .then(data => {
+                        echarts.registerMap('usa', data);
+                        isUsaLoaded = true;
+                        if (currentRegion === 'usa') {
+                            document.getElementById('header').innerText = '학습할 지역을 터치하세요';
+                            document.getElementById('header').style.color = '#333';
+                            renderChart(config);
+                        }
+                    })
+                    .catch(err => {
+                        document.getElementById('header').innerText = '데이터 로딩 실패. 네트워크를 확인하세요.';
+                    });
+                return;
+            }
+            
+            renderChart(config);
+        }
+
+        function renderChart(config) {
+            var option = {
+                series: [{
+                    type: 'map',
+                    mapType: config.map,
+                    roam: true,
+                    scaleLimit: { min: 1, max: 10 },
+                    nameMap: globalNameMap,
+                    center: config.center || null,
+                    zoom: config.zoom || 1,
+                    itemStyle: {
+                        normal: { areaColor: '#d6d6da', borderColor: '#ffffff', borderWidth: 0.5 },
+                        emphasis: { areaColor: '#e0e0e0' }
+                    },
+                    label: {
+                        normal: { 
+                            show: true,
+                            formatter: function(params) {
+                                return revealedState[params.name] ? params.name : '';
+                            },
+                            textStyle: { 
+                                color: '#d32f2f',
+                                fontSize: 11,
+                                fontWeight: 'bold'
+                            }
+                        }
+                    },
+                    data: Object.keys(revealedState).map(function(name) {
+                        return {
+                            name: name,
+                            itemStyle: { 
+                                areaColor: revealedState[name] ? '#bbdefb' : '#d6d6da'
+                            }
+                        };
+                    })
+                }]
+            };
+
+            chart.setOption(option, true);
+        }
+
+        renderMapManager();
+
+        chart.on('click', function (params) {
+            var currentName = params.name;
+            if (!currentName) return; 
+            
+            revealedState[currentName] = !revealedState[currentName];
+
+            var headerEl = document.getElementById('header');
+            
+            if (revealedState[currentName]) {
+                var cap = capitalMap[currentName];
+                // 수도 정보가 있으면 괄호와 함께 출력
+                if (cap) {
+                    headerEl.innerText = currentName + ' (' + cap + ')';
+                } else {
+                    headerEl.innerText = currentName;
+                }
+                headerEl.style.color = '#1976d2';
+            } else {
+                headerEl.innerText = '학습할 지역을 터치하세요';
+                headerEl.style.color = '#333';
+            }
+
+            chart.setOption({
+                series: [{
+                    data: Object.keys(revealedState).map(function(name) {
+                        return {
+                            name: name,
+                            itemStyle: { 
+                                areaColor: revealedState[name] ? '#bbdefb' : '#d6d6da'
+                            }
+                        };
+                    })
+                }]
+            });
+        });
+
+        window.addEventListener('resize', function() {
+            chart.resize();
+        });
+    </script>
+</body>
+</html>
